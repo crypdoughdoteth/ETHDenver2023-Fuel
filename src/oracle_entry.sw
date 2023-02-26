@@ -1,6 +1,7 @@
 contract; 
 
 use main::BountyBoard;
+use std::auth::msg_sender;
 
 abi OracleEntry{
     fn process_response(response: bool, index: u64);
