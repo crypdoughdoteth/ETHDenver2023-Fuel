@@ -1,0 +1,7 @@
+[project]
+authors = ["15164"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "bounty_board"
+
+[dependencies]
