@@ -1,52 +1,15 @@
 contract;
 
+dep events;
+dep data_structures;
+dep interface;
+use interface::*;
+use data_structures::*;
+use events::*;
 use std::storage::{StorageVec, StorageMap};
 use std::revert::revert;
 use std::auth::msg_sender;
 use std::logging::log;
-
-//Events
-    pub struct BountyAssigned{
-        users: [Identity;4],
-    }
-    pub struct QueryOracle{
-        bounty: Bounty,
-    }
-    pub struct BountyCreated{
-        bounty: Bounty,
-    }
-//Types
-    pub enum Status{
-        available: (),
-        in_progress: (),
-        completed: (),
-    }
-
-    pub struct Bounty {
-        status: Status,
-        issuer: Identity,
-        assignees: Option<[Identity; 4]>,
-        bounty_type: Bounties,
-        github_issue: str[64],
-        github_pull_request: Option<str[64]>,
-        completed: bool,
-    }
-    pub enum Bounties{
-        open: (),
-        closed: (),
-    }
-abi BountyBoard {
-    #[storage(read, write)]
-    fn new(type_of: Bounties, issue: str[64]);
-    #[storage(read, write)]
-    fn attempt_bounty(index: u64, bounty_hunters: [Identity;4], pr: str[64]);
-    #[storage(read, write)]
-    fn assign_bounty(index: u64, bounty_hunters: [Identity;4], pr: str[64]);
-    #[storage(read, write)]
-    fn settle_bounty(index: u64);
-    #[storage(read, write)]
-    fn unlock_bounty(index: u64);
-}
 
 const ORACLE_CONTRACT: Identity = Identity::ContractId(ContractId::from(0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0));
 
@@ -111,6 +74,9 @@ impl BountyBoard for Contract {
         //  emit event
         log(BountyAssigned{users: bounty_hunters});
     }
+
+    //reassignment funtion
+
     #[storage(read, write)]
     fn settle_bounty(index: u64) {
         //only callable if assigned to a bounty
@@ -140,6 +106,7 @@ impl BountyBoard for Contract {
             completed: true,
         };
         storage.bounties.set(index, updated);
+        
     }
 
 }
