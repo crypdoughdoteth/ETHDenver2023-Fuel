@@ -9,15 +9,15 @@ library data_structures;
     pub struct Bounty {
         status: Status,
         issuer: Identity,
+        asset_id: ContractId,
         assignees: Option<[Identity; 4]>,
         bounty_type: Bounties,
         github_issue: str[64],
         github_pull_request: Option<str[64]>,
-        //add time frame to bounty assignment for bounty reset 
-        completed: bool,
+        amount: u64,
+        dispute_window: u64, 
     }
     pub enum Bounties{
         open: (),
         closed: (),
     }
-
