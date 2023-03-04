@@ -6,8 +6,8 @@ use events::*;
 use data_structures::*;
 
 abi BountyBoard {
-    #[storage(read, write)]
-    fn new(type_of: Bounties, issue: str[64], time: u64);
+    #[storage(read, write), payable]
+    fn new(type_of: Bounties, issue: str[64], offer: u64, time: u64, tier: Tier);
     #[storage(read, write)]
     fn attempt_bounty(index: u64, bounty_hunters: [Identity;4], pr: str[64]);
     #[storage(read, write)]
@@ -22,7 +22,7 @@ abi BountyBoard {
     fn claim_bounty(index: u64);
     #[storage(read, write)]    
     fn withdraw_bounty(index: u64);
-    #[storage(read, write)]    
+    #[storage(read)]    
     fn dispute_bounty(index: u64);
 
 }
