@@ -8,6 +8,7 @@ use data_structures::*;
 use events::*;
 use std::call_frames::{
     msg_asset_id,
+    get_contract_id_from_call_frame,
 };
 use std::storage::{StorageVec, StorageMap};
 use std::revert::revert;
@@ -24,9 +25,15 @@ storage {
     bounties: StorageVec<Bounty> = StorageVec{},
 }
 impl BountyBoard for Contract {
-    #[storage(read, write)]
-    fn new(type_of: Bounties, issue: str[64], time: u64){
-       assert(msg_amount() >= 0);
+    #[storage(read, write), payable]
+    fn new(type_of: Bounties, issue: str[64], offer: u64, time: u64, tier: Tier){
+       assert(msg_amount() >= offer);
+       match tier {
+        Tier::gold => assert(msg_amount() > 420 /*&& msg_asset_id() ==*/   ),
+        Tier::silver => assert(msg_amount() > 250),
+        Tier::bronze => assert(msg_amount() > 69),
+
+       }
        let bty = Bounty{
             status: Status::available,
             issuer: msg_sender().unwrap(),
@@ -37,6 +44,7 @@ impl BountyBoard for Contract {
             github_pull_request: Option::None,
             amount: msg_amount(),
             dispute_window: timestamp() + time,
+            tier,
         };
         storage.bounties.push(bty);
         log(BountyCreated{bounty: bty});
@@ -60,6 +68,7 @@ impl BountyBoard for Contract {
             github_pull_request: Option::Some(pr),
             amount: bounty.amount,
             dispute_window: bounty.dispute_window,
+            tier: bounty.tier,
         };
         storage.bounties.set(index, update_bounty);
         // emit event
@@ -81,6 +90,7 @@ impl BountyBoard for Contract {
             github_pull_request: Option::Some(pr),
             amount: bounty.amount,
             dispute_window: bounty.dispute_window,
+            tier: bounty.tier,
         };
         storage.bounties.set(index, update_bounty);
         //  emit event
@@ -121,6 +131,7 @@ impl BountyBoard for Contract {
             github_pull_request: bounty.github_pull_request,
             amount: bounty.amount,
             dispute_window: bounty.dispute_window,
+            tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
     }
@@ -140,6 +151,7 @@ impl BountyBoard for Contract {
             github_pull_request: bounty.github_pull_request,
             amount: bounty.amount + msg_amount(),
             dispute_window: bounty.dispute_window, 
+            tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
     }
@@ -160,7 +172,8 @@ impl BountyBoard for Contract {
             github_issue: bounty.github_issue,
             github_pull_request: bounty.github_pull_request,
             amount: 0,
-            dispute_window: bounty.dispute_window, 
+            dispute_window: bounty.dispute_window,
+            tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
         let mut i = 0;
@@ -190,7 +203,7 @@ impl BountyBoard for Contract {
         }
     }
 
-    #[storage(read, write)]    
+    #[storage(read)]    
     fn dispute_bounty(index: u64){
         let bounty = storage.bounties.get(index).unwrap();
         assert(msg_sender().unwrap() == bounty.issuer);
@@ -211,7 +224,6 @@ impl BountyBoard for Contract {
             Status::completed => (),
             _ => revert(0),
         }
-        assert(timestamp() < bounty.dispute_window);
         let updated = Bounty {
             status: Status::completed,
             issuer: bounty.issuer,
@@ -222,6 +234,7 @@ impl BountyBoard for Contract {
             github_pull_request: bounty.github_pull_request,
             amount: 0,
             dispute_window: bounty.dispute_window, 
+            tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
             match bounty.issuer{
@@ -229,5 +242,4 @@ impl BountyBoard for Contract {
                 Identity::Address(x) => transfer_to_address(bounty.amount, bounty.asset_id, x),
         }        
     }
-
 }
