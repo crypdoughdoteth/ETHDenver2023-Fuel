@@ -242,4 +242,12 @@ impl BountyBoard for Contract {
                 Identity::Address(x) => transfer_to_address(bounty.amount, bounty.asset_id, x),
         }        
     }
+    #[storage(read)]
+    fn get_bounties() {
+        let mut i: u64 = 0;
+        while i > storage.bounties.len() {
+            log(storage.bounties.get(i).unwrap());
+        }
+        i+=1;
+    }
 }
