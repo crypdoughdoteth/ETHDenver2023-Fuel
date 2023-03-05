@@ -203,7 +203,7 @@ impl BountyBoard for Contract {
         }
     }
 
-    #[storage(read)]    
+    #[storage(read, write)]    
     fn dispute_bounty(index: u64){
         let bounty = storage.bounties.get(index).unwrap();
         assert(msg_sender().unwrap() == bounty.issuer);
