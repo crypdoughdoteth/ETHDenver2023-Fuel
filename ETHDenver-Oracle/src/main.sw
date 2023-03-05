@@ -11,7 +11,7 @@ abi OracleEntry{
 
 // todo!() - update with actual contract ID & Oracle Wallet 
 const BOUNTY_BOARD = 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0;
-const ORACLE_ID = Identity::Address(Address::from(fuel1cjet8pc6ulx02wkdnnm285w6pey2yw3wdmyvu0r8nhsjhpcuyu3q6he4gs));
+const ORACLE_ID = Identity::Address(Address::from(0xf826361801dabe5766968368e06131f88f0a4ff60549594db6185f5b848592b5));
 impl OracleEntry for Contract{
 
     fn process_response(response: bool, index: u64, status: Status) -> (u64, Status){
