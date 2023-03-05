@@ -15,7 +15,6 @@ use std::revert::revert;
 use std::auth::msg_sender;
 use std::logging::log;
 use std::{context::*, token::*};
-use std::block::timestamp;
 
 const ORACLE_CONTRACT: Identity = Identity::ContractId(ContractId::from(0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0));
 
@@ -29,10 +28,10 @@ impl BountyBoard for Contract {
     fn new(type_of: Bounties, issue: str[64], offer: u64, time: u64, tier: Tier){
        assert(msg_amount() >= offer);
        match tier {
-        Tier::gold => assert(msg_amount() > 420 /*&& msg_asset_id() ==*/   ),
+        Tier::gold => assert(msg_amount() > 420),
         Tier::silver => assert(msg_amount() > 250),
         Tier::bronze => assert(msg_amount() > 69),
-
+        _ => (),
        }
        let bty = Bounty{
             status: Status::available,
@@ -43,14 +42,13 @@ impl BountyBoard for Contract {
             github_issue: issue,
             github_pull_request: Option::None,
             amount: msg_amount(),
-            dispute_window: timestamp() + time,
             tier,
         };
         storage.bounties.push(bty);
         log(BountyCreated{bounty: bty});
     }
     #[storage(read, write)]
-    fn attempt_bounty(index: u64, bounty_hunters: [Identity;4], pr: str[64]) {
+    fn attempt_bounty(index: u64, bounty_hunters: Address, pr: str[64]) {
         // ensure that the bounty is of type open, otherwise need to call the other function
         let bounty = storage.bounties.get(index).unwrap();
         match bounty.bounty_type{
@@ -67,7 +65,6 @@ impl BountyBoard for Contract {
             github_issue: bounty.github_issue,
             github_pull_request: Option::Some(pr),
             amount: bounty.amount,
-            dispute_window: bounty.dispute_window,
             tier: bounty.tier,
         };
         storage.bounties.set(index, update_bounty);
@@ -75,7 +72,7 @@ impl BountyBoard for Contract {
         log(BountyAssigned{users: bounty_hunters});
     }
      #[storage(read, write)]
-    fn assign_bounty(index: u64, bounty_hunters: [Identity;4], pr: str[64]) {
+    fn assign_bounty(index: u64, bounty_hunter: Address, pr: str[64]) {
         let bounty = storage.bounties.get(index).unwrap();
         // ensure the issuer of the bounty is the only one who can call this function
         assert(msg_sender().unwrap() == bounty.issuer);        
@@ -84,17 +81,17 @@ impl BountyBoard for Contract {
             status: Status::in_progress,
             issuer: bounty.issuer,
             asset_id: bounty.asset_id,
-            assignees: Option::Some(bounty_hunters),
+            assignees: Option::Some(bounty_hunter),
             bounty_type: bounty.bounty_type,
             github_issue: bounty.github_issue,
             github_pull_request: Option::Some(pr),
             amount: bounty.amount,
-            dispute_window: bounty.dispute_window,
             tier: bounty.tier,
         };
         storage.bounties.set(index, update_bounty);
         //  emit event
-        log(BountyAssigned{users: bounty_hunters});
+        log(BountyAssigned{users: bounty.assignees.unwrap()});
+
     }
 
     //reassignment funtion
@@ -130,31 +127,11 @@ impl BountyBoard for Contract {
             github_issue: bounty.github_issue,
             github_pull_request: bounty.github_pull_request,
             amount: bounty.amount,
-            dispute_window: bounty.dispute_window,
             tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
     }
     
-    #[storage(read, write)]    
-    fn deposit_bounty(index: u64){
-        assert(msg_amount() > 0);
-        let bounty = storage.bounties.get(index).unwrap();
-        assert(msg_asset_id() == bounty.asset_id);
-        let updated = Bounty {
-            status: bounty.status,
-            issuer: bounty.issuer,
-            assignees: bounty.assignees,
-            asset_id: bounty.asset_id,
-            bounty_type: bounty.bounty_type,
-            github_issue: bounty.github_issue,
-            github_pull_request: bounty.github_pull_request,
-            amount: bounty.amount + msg_amount(),
-            dispute_window: bounty.dispute_window, 
-            tier: bounty.tier,
-        };
-        storage.bounties.set(index, updated);
-    }
     #[storage(read, write)]    
     fn claim_bounty(index: u64) {
         let bounty: Bounty = storage.bounties.get(index).unwrap();
@@ -162,7 +139,6 @@ impl BountyBoard for Contract {
             Status::completed => (),
             _ => revert(0),
         }       
-        assert(timestamp() >= bounty.dispute_window);
         let updated = Bounty {
             status: Status::completed,
             issuer: bounty.issuer,
@@ -172,48 +148,12 @@ impl BountyBoard for Contract {
             github_issue: bounty.github_issue,
             github_pull_request: bounty.github_pull_request,
             amount: 0,
-            dispute_window: bounty.dispute_window,
             tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
-        let mut i = 0;
-        let mut y = 0;
-        let mut len = 0;
-        while y <= 4{
-            let to: Identity = bounty.assignees.unwrap()[i];
-    
-            match to {
-                Identity::ContractId(x) => {
-                   len += 1;
-                },
-                Identity::Address(x) => {
-                    len += 1;
-                }
-            }
-            y += 1;
-        }
-        let payout = bounty.amount / 4;
-        while i <= len{
-            let to: Identity = bounty.assignees.unwrap()[i];
-            match to{
-                Identity::ContractId(x) => force_transfer_to_contract(payout, bounty.asset_id, x),
-                Identity::Address(x) => transfer_to_address(payout, bounty.asset_id, x),
-            }
-            i += 1;
-        }
+        transfer_to_address(bounty.amount, bounty.asset_id, bounty.assignees.unwrap());
     }
 
-    #[storage(read, write)]    
-    fn dispute_bounty(index: u64){
-        let bounty = storage.bounties.get(index).unwrap();
-        assert(msg_sender().unwrap() == bounty.issuer);
-        assert(timestamp() <= bounty.dispute_window);
-        match bounty.status {
-            Status::completed => (),
-            _ => revert(0),
-        }        
-        log(QueryOracle{bounty});           
-    }
 
     #[storage(read, write)]    
     fn withdraw_bounty(index: u64){
@@ -233,7 +173,6 @@ impl BountyBoard for Contract {
             github_issue: bounty.github_issue,
             github_pull_request: bounty.github_pull_request,
             amount: 0,
-            dispute_window: bounty.dispute_window, 
             tier: bounty.tier,
         };
         storage.bounties.set(index, updated);
