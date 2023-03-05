@@ -24,5 +24,8 @@ abi BountyBoard {
     fn withdraw_bounty(index: u64);
     #[storage(read, write)]    
     fn dispute_bounty(index: u64);
+    #[storage(read)]    
+    fn get_bounties();
+
 
 }
